@@ -1,4 +1,4 @@
-module rimzbuster
+module github.com/vengeance1337/RimzBuster-C2
 
 go 1.22.5
 
