@@ -5,9 +5,13 @@ The RimzBuster C2 Framework is a sophisticated Command and Control (C2) system d
 
 ![Animated demonstration of the project](https://i.ibb.co/fr7rq55/rimz.gif)
 
-![image](https://github.com/user-attachments/assets/4bdbf274-3e88-48e5-837b-2c6ac67d85dd)
-
 ## Key Features
+
+### Help Menu
+
+**help**: Displays help menu
+
+![image](https://github.com/user-attachments/assets/4bdbf274-3e88-48e5-837b-2c6ac67d85dd)
 
 ### Session Management
 
