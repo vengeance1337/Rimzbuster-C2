@@ -1,5 +1,9 @@
 # RimzBuster C2 Framework
 
+## Note
+
+This project was built from scratch by the author Valerian Angelo Griffiths. This project was specifically made for a thesis research and is free to use and try out for educational purposes only. 
+
 ## Overview
 The RimzBuster C2 Framework is a sophisticated Command and Control (C2) system designed to demonstrate and analyze the potential cybersecurity vulnerabilities in modern vehicle systems. This framework leverages the On-Board Diagnostics (OBD-II) interface and the Controller Area Network (CAN) bus to remotely control various vehicle functions. Developed in Golang, it comprises a server component for macOS and a client component for Linux, ensuring cross-platform compatibility and robustness.
 
